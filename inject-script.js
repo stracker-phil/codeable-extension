@@ -41,10 +41,10 @@ function createOrUpdateExpertsMeta(notification_el, number) {
     expert_element.classList.add('notification__meta__experts')
     expert_element.style.marginLeft = '12px'
     expert_element.style.order = '1'
-    
+
     // Create user icon element
     let expert_element_icon = document.createElement('i')
-    expert_element_icon.classList.add('icon', 'icon-number-of-experts-with-fill') 
+    expert_element_icon.classList.add('icon', 'icon-number-of-experts-with-fill')
     expert_element_icon.style.verticalAlign = 'middle'
 
     // Create user icon text node
@@ -53,7 +53,7 @@ function createOrUpdateExpertsMeta(notification_el, number) {
     expert_element_text.textContent = number
     expert_element_text.style.verticalAlign = 'middle'
     expert_element_text.style.marginLeft = '4px'
-    
+
     // Append the elements
     expert_element.appendChild(expert_element_icon)
     expert_element.appendChild(expert_element_text)
@@ -72,10 +72,10 @@ function createOrUpdateCommentsMeta(notification_el, number) {
     comments_element.classList.add('notification__meta__comments')
     comments_element.style.marginLeft = '12px'
     comments_element.style.order = '2'
-    
+
     // Create user icon element
     let comments_element_icon = document.createElement('i')
-    comments_element_icon.classList.add('icon', 'icon-number-of-comments-with-fill') 
+    comments_element_icon.classList.add('icon', 'icon-number-of-comments-with-fill')
     comments_element_icon.style.verticalAlign = 'middle'
 
     // Create user icon text node
@@ -84,7 +84,7 @@ function createOrUpdateCommentsMeta(notification_el, number) {
     comments_element_text.textContent = number
     comments_element_text.style.verticalAlign = 'middle'
     comments_element_text.style.marginLeft = '4px'
-    
+
     // Append the elements
     comments_element.appendChild(comments_element_icon)
     comments_element.appendChild(comments_element_text)
@@ -115,7 +115,7 @@ function showReferoo(notification_el, partner) {
     partner_element.style.lineHeight = '22px';
     partner_element.style.order = '3'
 
-    
+
     // Add it to the page
     notification_el.appendChild(partner_element)
   }
@@ -143,7 +143,7 @@ function showKeywords(notification_el, keywords) {
     keyword_element.style.padding = '0 7px 2px';
     keyword_element.style.lineHeight = '20px';
 
-    
+
     // Add it to the page
     notification_el.appendChild(keyword_element)
   }
@@ -170,7 +170,7 @@ function fetchMyKeywords() {
   if (!auth_token) {
     return;
   }
-    
+
   // Get the list of comments from the API for each notification/task
   fetch(`https://api.codeable.io/users/me`, {
     method: 'GET',
@@ -198,7 +198,7 @@ function updateNotificationsMeta() {
   if (auth_token) {
     // Get the array of notification elements
     let notifications = document.querySelectorAll('.popover-notifications-widget cdbl-notification-item a')
-    
+
     // Loop through all notification elements
     notifications.forEach(notification => {
       // Returns '/task/{id}'
@@ -218,7 +218,7 @@ function updateNotificationsMeta() {
 
         // Filter out private comments and expert-only comments
         let public_comments = expert_comments.filter(comment => !comment.private && !comment.is_contractors_only)
-        
+
         // Filter out duplicate expert comments
         let unique_experts = public_comments.filter((value, index, self) => {
           return self.findIndex(v => v.user.id === value.user.id) === index;
@@ -254,6 +254,44 @@ function updateNotificationsMeta() {
   }
 }
 
+let tmr_comment_update;
+
+function scheduleCommentUpdate() {
+  if (tmr_comment_update) {
+	clearTimeout(tmr_comment_update)
+  }
+
+  // Update comments with a slight delay, to ensure all comments are injected before updating them.
+  tmr_comment_update = setTimeout(updateComments, 500);
+}
+
+function updateComments() {
+	tmr_comment_update = null;
+
+	console.log('Update comments');
+	const comments = document.querySelectorAll('[id] > .comment');
+
+	comments.forEach(el => {
+		if (el.classList.contains('__updated_by_ext')) {
+			return;
+		}
+
+		const id = el.parentElement.getAttribute('id');
+		const anchor_element = document.createElement('a');
+		anchor_element.innerText = '#';
+		anchor_element.setAttribute('href', `#${id}`);
+		anchor_element.classList.add('anchor_link');
+		anchor_element.style.position = 'absolute';
+		anchor_element.style.top = '10px';
+		anchor_element.style.right = '20px';
+		anchor_element.style.zIndex = '10';
+
+		el.appendChild(anchor_element);
+
+		el.classList.add('__updated_by_ext');
+	})
+}
+
 // Variables for throttling notifications meta updates
 let last_meta_update = null
 const meta_update_interval = 60000 // 1 minute
@@ -262,19 +300,27 @@ fetchMyKeywords();
 
 // Listen for DOM node insertions
 document.addEventListener('DOMNodeInserted', e => {
-  // Make sure we have the right element (new projects popover)
-  if (e.target.classList &&
-      e.target.classList.contains('popover') &&
-      e.target.innerText && 
-      e.target.innerText.indexOf('NEW PROJECTS') != -1) {
-        // Check if meta updates have been called yet
-        // Or if it has been more than a minute since it was last called
-        if (!last_meta_update || Date.now() > last_meta_update + meta_update_interval) {
-          // Update the nofications meta
-          updateNotificationsMeta()
+  if (!e.target || !e.target.classList || ! e.target.innerText) {
+    return;
+  }
 
-          // Update the timestamp
-          last_meta_update = Date.now()
-        }      
+  // Update the "New Projects" popover.
+  if (e.target.classList.contains('popover') &&
+      e.target.innerText.indexOf('NEW PROJECTS') !== -1
+  ) {
+      // Check if meta updates have been called yet
+      // Or if it has been more than a minute since it was last called
+      if (!last_meta_update || Date.now() > last_meta_update + meta_update_interval) {
+        // Update the notifications meta
+        updateNotificationsMeta()
+
+        // Update the timestamp
+        last_meta_update = Date.now()
+      }
+  }
+
+  // Update comments in workroom
+  if (e.target.classList.contains('comment')) {
+  	scheduleCommentUpdate();
   }
 })
