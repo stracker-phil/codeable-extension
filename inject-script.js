@@ -39,7 +39,8 @@ function createOrUpdateExpertsMeta(notification_el, number) {
     // Create span for user meta
     let expert_element = document.createElement('span')
     expert_element.classList.add('notification__meta__experts')
-    expert_element.style.marginLeft = '16px'
+    expert_element.style.marginLeft = '12px'
+    expert_element.style.order = '1'
     
     // Create user icon element
     let expert_element_icon = document.createElement('i')
@@ -69,7 +70,8 @@ function createOrUpdateCommentsMeta(notification_el, number) {
     // Create span for user meta
     let comments_element = document.createElement('span')
     comments_element.classList.add('notification__meta__comments')
-    comments_element.style.marginLeft = '16px'
+    comments_element.style.marginLeft = '12px'
+    comments_element.style.order = '2'
     
     // Create user icon element
     let comments_element_icon = document.createElement('i')
@@ -94,6 +96,100 @@ function createOrUpdateCommentsMeta(notification_el, number) {
   }
 }
 
+function showReferoo(notification_el, partner) {
+  if (!partner) {
+    return;
+  }
+  if (!notification_el.querySelector('span.notification__meta__referoo')) {
+    // Create span for referoo partner ID
+    let partner_element = document.createElement('span')
+    partner_element.classList.add('notification__meta__referoo')
+    partner_element.style.marginLeft = '12px'
+    partner_element.style.fontSize = '12px'
+    partner_element.textContent = partner;
+    partner_element.style.verticalAlign = 'middle'
+    partner_element.style.color = '#fff'
+    partner_element.style.backgroundColor = '#151d22';
+    partner_element.style.borderRadius = '3px';
+    partner_element.style.padding = '0 7px 2px';
+    partner_element.style.lineHeight = '22px';
+    partner_element.style.order = '3'
+
+    
+    // Add it to the page
+    notification_el.appendChild(partner_element)
+  }
+}
+
+function showKeywords(notification_el, keywords) {
+  if (!keywords || !keywords.length) {
+    return;
+  }
+
+  if (!notification_el.querySelector('span.notification__meta__keywords')) {
+    // Create span for referoo partner ID
+    let keyword_element = document.createElement('span')
+    keyword_element.classList.add('notification__meta__keywords')
+    keyword_element.style.marginLeft = '12px'
+    keyword_element.textContent = keywords.join(', ');
+    keyword_element.style.verticalAlign = 'middle'
+    keyword_element.style.fontSize = '12px'
+    keyword_element.style.order = '4'
+    keyword_element.style.whiteSpace = 'no-wrap';
+    keyword_element.style.border = '1px solid #b9ccc5';
+    keyword_element.style.backgroundColor = '#f9fbfb';
+    keyword_element.style.color = '#151d22';
+    keyword_element.style.borderRadius = '3px';
+    keyword_element.style.padding = '0 7px 2px';
+    keyword_element.style.lineHeight = '20px';
+
+    
+    // Add it to the page
+    notification_el.appendChild(keyword_element)
+  }
+  console.log('KEYWORDS: ' ,keywords)
+}
+
+function checkForKeywords(...contents) {
+  const text = contents.join(' ').replace(/[\r\n]+/g,' ');
+  const terms = document.myKeywords.map(term => `\\b${term}\\b`);
+  const matches = text.match(new RegExp(terms.join('|'), 'g'));
+
+  // Return unique matches
+  return [...new Set(matches)];
+}
+
+function fetchMyKeywords() {
+  document.myUser = {};
+  document.myKeywords = [];
+
+  // Set the auth token for API requests
+  let auth_token = JSON.parse(localStorage.getItem('ngStorage-Authorization'))
+
+  // Make sure auth token exists before making API calls
+  if (!auth_token) {
+    return;
+  }
+    
+  // Get the list of comments from the API for each notification/task
+  fetch(`https://api.codeable.io/users/me`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Token ${auth_token}`
+    }
+  })
+  .then(res => res ? res.json() : {})
+  .then(userData => {
+    document.myUser = userData;
+
+    userData.tags.forEach(tag => {
+      if (tag && tag.name) {
+        document.myKeywords.push(tag.name)
+      }
+    })
+  })
+}
+
 function updateNotificationsMeta() {
   // Set the auth token for API requests
   let auth_token = JSON.parse(localStorage.getItem('ngStorage-Authorization'))
@@ -115,7 +211,7 @@ function updateNotificationsMeta() {
           'Authorization': `Token ${auth_token}`
         }
       })
-      .then(res => res.json())
+      .then(res => res ? res.json() : {})
       .then(comments => {
         // Filter out non-expert comments
         let expert_comments = comments.filter(comment => comment.user.role == 'contractor')
@@ -135,6 +231,25 @@ function updateNotificationsMeta() {
 
         createOrUpdateCommentsMeta(notification_meta, public_comments.length)
       })
+
+      fetch(`https://api.codeable.io${path}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Token ${auth_token}`
+        }
+      })
+      .then(res => res ? res.json() : {})
+      .then(task => {
+        // Create/Update the elements
+        let notification_meta = notification.querySelector('.notification__meta')
+
+        // Show the referring partner ID (if available)
+        showReferoo(notification_meta, task.referoo_partner_tracking_name)
+
+        // Check the task description for keywords.
+        const matches = checkForKeywords(task.title, task.description)
+        showKeywords(notification_meta, matches);
+      })
     })
   }
 }
@@ -142,6 +257,8 @@ function updateNotificationsMeta() {
 // Variables for throttling notifications meta updates
 let last_meta_update = null
 const meta_update_interval = 60000 // 1 minute
+
+fetchMyKeywords();
 
 // Listen for DOM node insertions
 document.addEventListener('DOMNodeInserted', e => {
