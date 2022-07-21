@@ -24,20 +24,24 @@ async function getNotifications(token) {
 
 
 // Add the notifications count to the page title
-function updateDocumentTitle(title, count) {
+function updateDocumentTitle(count) {
+  // Get the current page title and remvove an eventual "(5) " count-prefix.
+  const title = document.title.replace(/^\(\d+\) /, '');
+
+  // Update the page title with the new count-prefix.
   document.title = `(${count}) ${title}`
 }
 
 
 // Get the notifications and update the count and page title
-function updateNotificationsCount(token, title) {
+function updateNotificationsCount(token) {
   getNotifications(token)
     .then(notifications => {
       // Filter out notifications that have been read
       const unread_notifications = notifications.filter(notification => !notification.is_read)
       
       // Update the page title to show the unread notifications count
-      updateDocumentTitle(title, unread_notifications.length)
+      updateDocumentTitle(unread_notifications.length)
     })
 }
 
@@ -56,15 +60,12 @@ function injectScript(file_path, tag) {
 
 // Functionality that needs to run when the extension is first installed
 function initExtension() {
-  // Store a copy of the page title when the page loads
-  const page_title = document.title
-
   // Set the user auth token, will be null if logged out
   let auth_token = JSON.parse(localStorage.getItem('ngStorage-Authorization'))
 
   // Check notifications on first page load if token is set
   if (auth_token) {
-    updateNotificationsCount(auth_token, page_title)
+    updateNotificationsCount(auth_token)
   }
 
   // Add the event listeners to the page
@@ -78,7 +79,7 @@ function initExtension() {
     if (auth_token 
         && e.data.type 
         && (e.data.type == 'UPDATE_NOTIFICATIONS')) {
-      updateNotificationsCount(auth_token, page_title)
+      updateNotificationsCount(auth_token)
     }
   }, false)
 }
