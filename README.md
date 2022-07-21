@@ -10,9 +10,9 @@
 
 ## Additions
 
-1. Show the referrer in the new projects popup
-1. Show your personal skill-tags in the new projects popup (i.e. matching tags between your profile and the project)
-1. Adds an anchor link to every comment inside a workroom
+1. Show the **referrer** in the "New Projects" popup
+1. Show matching **personal skill** in the "New Projects" popup (i.e. matching tags between your profile and the project)
+1. Adds an **anchor link** to every comment inside a workroom
 
 ## Installation
 
