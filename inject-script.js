@@ -284,7 +284,6 @@ function updateComments() {
 		anchor_element.style.position = 'absolute';
 		anchor_element.style.top = '10px';
 		anchor_element.style.right = '20px';
-		anchor_element.style.zIndex = '10';
 
 		el.appendChild(anchor_element);
 
